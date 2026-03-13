@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Baloo+2:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", sans-serif;
+  --font-baloo: "Baloo 2", cursive;
+}
+
+@layer base {
+  body {
+    @apply bg-[#130D19] text-white font-sans antialiased;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+.bg-gradient-hero {
+  background: linear-gradient(180deg, #1A051B 53%, #690D0D 100%);
+}
+
+.bg-premium-card {
+  background: linear-gradient(180deg, #ffa311 0%, #0e0b0c 20%);
+}
