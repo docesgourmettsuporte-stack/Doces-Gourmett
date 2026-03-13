@@ -22,14 +22,57 @@ import {
 
 // --- Components ---
 
-const Navbar = () => (
-  <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 py-4">
-    <div className="max-w-7xl mx-auto px-4 flex justify-center items-center">
-      <div className="text-xl font-display font-black tracking-tighter text-yellow-500">
-        BRIGADEIRO <span className="text-white">SEM FOGO</span>
+const TopBanner = () => {
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [currentDate, setCurrentDate] = useState('');
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const diff = endOfDay.getTime() - now.getTime();
+      
+      if (diff > 0) {
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / 1000 / 60) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        setTimeLeft({ hours, minutes, seconds });
+      }
+
+      const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+      setCurrentDate(now.toLocaleDateString('pt-BR', options));
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatNumber = (num: number) => num.toString().padStart(2, '0');
+
+  return (
+    <div className="bg-red-600 text-white py-2 px-4 text-center text-[10px] md:text-sm font-bold flex flex-col md:flex-row justify-center items-center gap-1 md:gap-4 border-b border-white/10">
+      <div className="flex items-center gap-2">
+        <Zap className="w-3 h-3 md:w-4 md:h-4 fill-yellow-400 text-yellow-400 animate-pulse" />
+        <span className="uppercase tracking-wider">Atenção: Oferta válida apenas até {currentDate}</span>
+      </div>
+      <div className="flex items-center gap-2 bg-black/20 px-3 py-0.5 rounded-full">
+        <Clock className="w-3 h-3 md:w-4 md:h-4" />
+        <span className="hidden md:inline">A PROMOÇÃO ENCERRA EM:</span>
+        <span className="font-mono text-yellow-300 text-sm md:text-base">
+          {formatNumber(timeLeft.hours)}:{formatNumber(timeLeft.minutes)}:{formatNumber(timeLeft.seconds)}
+        </span>
       </div>
     </div>
-  </nav>
+  );
+};
+
+const Navbar = () => (
+  <header className="fixed top-0 left-0 right-0 z-50 shadow-2xl">
+    <TopBanner />
+  </header>
 );
 
 const PurchaseNotification = () => {
@@ -106,13 +149,38 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
 // --- Main Page ---
 
 export default function App() {
+  const handleRedirect = (baseUrl: string) => {
+    const currentSearch = window.location.search;
+    if (!currentSearch) {
+      window.location.href = baseUrl;
+      return;
+    }
+
+    // Se a URL base já tiver parâmetros, usamos & para concatenar, senão ?
+    // Mas uma forma mais robusta é usar a API URL
+    try {
+      const url = new URL(baseUrl);
+      const currentParams = new URLSearchParams(currentSearch);
+      
+      currentParams.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+      
+      window.location.href = url.toString();
+    } catch (e) {
+      // Fallback simples caso a URL seja relativa ou malformada
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      window.location.href = `${baseUrl}${separator}${currentSearch.substring(1)}`;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#130D19] overflow-x-hidden">
       <Navbar />
       <PurchaseNotification />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 bg-gradient-hero">
+      <section className="relative pt-20 md:pt-24 pb-20 px-4 bg-gradient-hero">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h1 
             initial={{ y: 20, opacity: 0 }}
@@ -147,7 +215,7 @@ export default function App() {
           </motion.div>
 
           <div className="space-y-4">
-            <p className="italic text-gray-400">de <del className="text-red-500">R$ 47,00</del> por</p>
+            <p className="italic text-gray-400">de <del className="text-red-500">R$ 10,00</del> por</p>
             <p className="text-5xl md:text-7xl font-display font-black text-white mb-8">R$ 2,99</p>
             
             <a 
@@ -324,12 +392,12 @@ export default function App() {
               </ul>
               <div className="text-center space-y-4">
                 <p className="text-4xl font-black text-yellow-700">R$ 2,99</p>
-                <a 
-                  href="https://docesgourmet.shop/oferta/"
-                  className="block w-full bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-colors"
+                <button 
+                  onClick={() => handleRedirect("https://docesgourmet.shop/oferta/")}
+                  className="block w-full bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-colors cursor-pointer"
                 >
                   PLANO BÁSICO
-                </a>
+                </button>
                 <p className="text-[10px] text-gray-500">Mas antes de comprar, temos uma oferta ainda melhor abaixo</p>
                 <ArrowDown className="mx-auto text-black animate-bounce" />
               </div>
@@ -367,12 +435,12 @@ export default function App() {
                 <p className="text-xs text-gray-400">Valor Total de <del className="text-red-500">R$ 49,99</del> por</p>
                 <p className="text-5xl font-black text-green-400">R$ 14,99</p>
                 <p className="text-sm font-bold">Pagamento Único</p>
-                <a 
-                  href="https://pay.lowify.com.br/checkout?product_id=BPKfvc"
-                  className="block w-full bg-yellow-500 text-black font-black py-5 rounded-2xl hover:bg-yellow-400 transition-colors mt-4 shadow-xl"
+                <button 
+                  onClick={() => handleRedirect("https://pay.lowify.com.br/checkout?product_id=BPKfvc")}
+                  className="block w-full bg-yellow-500 text-black font-black py-5 rounded-2xl hover:bg-yellow-400 transition-colors mt-4 shadow-xl cursor-pointer"
                 >
                   GARANTIR MINHA VAGA!
-                </a>
+                </button>
                 <p className="text-[10px] text-gray-400 mt-4 italic">*Pagamento único, acesso vitalício*</p>
               </div>
             </div>
@@ -409,12 +477,12 @@ export default function App() {
           />
 
           <div className="text-center mt-16">
-            <a 
-              href="https://pay.lowify.com.br/checkout?product_id=BPKfvc"
-              className="inline-flex items-center gap-3 bg-yellow-500 text-black font-display font-black text-lg px-8 py-4 rounded-full hover:scale-105 transition-transform"
+            <button 
+              onClick={() => handleRedirect("https://pay.lowify.com.br/checkout?product_id=BPKfvc")}
+              className="inline-flex items-center gap-3 bg-yellow-500 text-black font-display font-black text-lg px-8 py-4 rounded-full hover:scale-105 transition-transform cursor-pointer"
             >
               CLIQUE AQUI E GARANTA SUA VAGA!
-            </a>
+            </button>
           </div>
         </div>
       </section>
