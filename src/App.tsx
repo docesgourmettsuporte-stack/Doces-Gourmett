@@ -17,7 +17,8 @@ import {
   Zap,
   ShoppingBag,
   MessageCircle,
-  ArrowDown
+  ArrowDown,
+  Lock
 } from 'lucide-react';
 
 // --- Components ---
@@ -53,15 +54,15 @@ const TopBanner = () => {
   const formatNumber = (num: number) => num.toString().padStart(2, '0');
 
   return (
-    <div className="bg-red-600 text-white py-2 px-4 text-center text-[10px] md:text-sm font-bold flex flex-col md:flex-row justify-center items-center gap-1 md:gap-4 border-b border-white/10">
+    <div className="bg-gradient-to-r from-red-700 via-red-600 to-red-700 text-white py-3 px-4 text-center text-[10px] md:text-sm font-black flex flex-col md:flex-row justify-center items-center gap-2 md:gap-6 border-b-2 border-yellow-500/50 shadow-lg">
       <div className="flex items-center gap-2">
-        <Zap className="w-3 h-3 md:w-4 md:h-4 fill-yellow-400 text-yellow-400 animate-pulse" />
-        <span className="uppercase tracking-wider">Atenção: Oferta válida apenas até {currentDate}</span>
+        <Zap className="w-4 h-4 fill-yellow-400 text-yellow-400 animate-pulse" />
+        <span className="uppercase tracking-tighter md:tracking-widest">URGENTE: OFERTA EXCLUSIVA VÁLIDA ATÉ {currentDate}</span>
       </div>
-      <div className="flex items-center gap-2 bg-black/20 px-3 py-0.5 rounded-full">
-        <Clock className="w-3 h-3 md:w-4 md:h-4" />
-        <span className="hidden md:inline">A PROMOÇÃO ENCERRA EM:</span>
-        <span className="font-mono text-yellow-300 text-sm md:text-base">
+      <div className="flex items-center gap-3 bg-black/40 px-4 py-1 rounded-full border border-white/20">
+        <Clock className="w-4 h-4 text-yellow-400" />
+        <span className="hidden lg:inline text-xs opacity-90">A PROMOÇÃO EXPIRA EM:</span>
+        <span className="font-mono text-yellow-400 text-base md:text-lg font-black tracking-widest">
           {formatNumber(timeLeft.hours)}:{formatNumber(timeLeft.minutes)}:{formatNumber(timeLeft.seconds)}
         </span>
       </div>
@@ -119,6 +120,18 @@ const PurchaseNotification = () => {
   );
 };
 
+const Marquee = ({ text, color = "bg-yellow-500" }: { text: string, color?: string }) => (
+  <div className={`${color} py-2 overflow-hidden whitespace-nowrap border-y-2 border-black/20`}>
+    <div className="animate-marquee inline-block">
+      {[...Array(10)].map((_, i) => (
+        <span key={i} className="text-black font-display text-xl md:text-2xl uppercase italic mx-4">
+          {text} •
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
 const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -149,28 +162,47 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
 // --- Main Page ---
 
 export default function App() {
+  const [showFloatingCTA, setShowFloatingCTA] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowFloatingCTA(window.scrollY > 800);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleRedirect = (baseUrl: string) => {
     const currentSearch = window.location.search;
+    
+    // Se for uma âncora interna, apenas navega
+    if (baseUrl.startsWith('#')) {
+      window.location.href = baseUrl;
+      return;
+    }
+
     if (!currentSearch) {
       window.location.href = baseUrl;
       return;
     }
 
-    // Se a URL base já tiver parâmetros, usamos & para concatenar, senão ?
-    // Mas uma forma mais robusta é usar a API URL
     try {
-      const url = new URL(baseUrl);
+      // Tenta criar um objeto URL. Se baseUrl for relativa, precisamos passar o origin.
+      const url = new URL(baseUrl, window.location.origin);
       const currentParams = new URLSearchParams(currentSearch);
       
+      // Adiciona todos os parâmetros atuais à nova URL
       currentParams.forEach((value, key) => {
         url.searchParams.set(key, value);
       });
       
       window.location.href = url.toString();
     } catch (e) {
-      // Fallback simples caso a URL seja relativa ou malformada
+      // Fallback robusto para URLs malformadas
       const separator = baseUrl.includes('?') ? '&' : '?';
-      window.location.href = `${baseUrl}${separator}${currentSearch.substring(1)}`;
+      // Remove o '?' inicial do search se existir
+      const cleanSearch = currentSearch.startsWith('?') ? currentSearch.substring(1) : currentSearch;
+      window.location.href = `${baseUrl}${separator}${cleanSearch}`;
     }
   };
 
@@ -180,107 +212,157 @@ export default function App() {
       <PurchaseNotification />
 
       {/* Hero Section */}
-      <section className="relative pt-20 md:pt-24 pb-20 px-4 bg-gradient-hero">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.h1 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="text-4xl md:text-6xl font-baloo font-black leading-tight mb-6"
+      <section className="relative pt-20 md:pt-24 pb-12 px-4 bg-gradient-hero overflow-hidden">
+        <Marquee text="OFERTA LIMITADA • ÚLTIMAS VAGAS COM DESCONTO • ACESSO IMEDIATO" />
+        
+        {/* Abstract Background Elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none">
+          <div className="absolute top-[10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/30 blur-[150px] rounded-full" />
+          <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[50%] bg-red-600/20 blur-[150px] rounded-full" />
+        </div>
+
+        <div className="max-w-7xl mx-auto text-center relative z-10 mt-12">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="inline-block bg-red-600 text-white px-6 py-2 rounded-full font-black text-sm md:text-base mb-8 tracking-widest uppercase shadow-[0_0_30px_rgba(220,38,38,0.5)]"
           >
-            +50 RECEITAS DE BRIGADEIRO <br />
-            <span className="text-yellow-500">SEM FOGO</span>
-          </motion.h1>
+            🚀 O MÉTODO QUE ESTÁ REVOLUCIONANDO A CONFEITARIA
+          </motion.div>
+
+          <div className="relative mb-12">
+            <h1 className="text-6xl md:text-[12rem] font-display leading-[0.8] uppercase italic animate-slam">
+              BRIGADEIRO <br />
+              <span className="text-yellow-500 text-glow-yellow">SEM FOGO</span>
+            </h1>
+            <div className="absolute -top-10 -right-10 md:-right-20 rotate-12 hidden md:block">
+              <div className="bg-red-600 text-white p-6 rounded-full font-display text-2xl animate-pulse shadow-2xl brutal-border-white">
+                +50 <br /> RECEITAS
+              </div>
+            </div>
+          </div>
           
           <motion.p 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-lg md:text-xl font-medium text-gray-200 mb-10"
+            transition={{ delay: 0.4 }}
+            className="text-xl md:text-3xl font-heading font-medium text-gray-200 mb-8 max-w-4xl mx-auto leading-tight"
           >
-            Você terá acesso ao <span className="text-yellow-500 underline underline-offset-4">passo a passo</span> detalhado de <span className="text-yellow-500">50 receitas exclusivas</span> para fazer os mais deliciosos brigadeiros em casa.
+            Pare de queimar dinheiro com gás e receitas perdidas. <br />
+            <span className="text-yellow-500 font-black">DOMINE A TÉCNICA</span> que os grandes chefs escondem de você!
           </motion.p>
 
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="relative inline-block mb-12"
-          >
-            <img 
-              src="https://cmrdigital.com.br/wp-content/uploads/2024/12/96-Receitas-de-Salgados-de-Sucesso.pdf-3-e1751787796622.png.webp" 
-              alt="Ebook Brigadeiro Sem Fogo"
-              className="w-64 md:w-80 mx-auto drop-shadow-[0_0_30px_rgba(255,173,0,0.3)]"
-              referrerPolicy="no-referrer"
-            />
-          </motion.div>
-
-          <div className="space-y-4">
-            <p className="italic text-gray-400">de <del className="text-red-500">R$ 10,00</del> por</p>
-            <p className="text-5xl md:text-7xl font-display font-black text-white mb-8">R$ 2,99</p>
-            
-            <a 
-              href="#pricing"
-              className="inline-flex items-center gap-3 bg-gradient-to-b from-orange-500 to-orange-600 text-white font-display font-bold text-xl px-10 py-5 rounded-2xl shadow-[0_0_20px_rgba(225,92,19,0.6)] border border-white/20 hover:scale-105 transition-transform animate-pulse-subtle"
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-16 mb-10">
+            <motion.div 
+              initial={{ x: -100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.5, type: "spring" }}
+              className="relative group"
             >
-              SIM! EU QUERO <ArrowRightCircle />
-            </a>
-            
-            <div className="flex justify-center mt-6">
+              <div className="absolute inset-0 bg-yellow-500/30 blur-[100px] rounded-full group-hover:bg-yellow-500/50 transition-all" />
               <img 
-                src="https://cmrdigital.com.br/wp-content/uploads/2024/07/WhatsApp_Image_2024-07-20_at_02.07.23-removebg-preview.png.webp" 
-                alt="Segurança"
-                className="h-8 opacity-80"
+                src="https://cmrdigital.com.br/wp-content/uploads/2024/12/96-Receitas-de-Salgados-de-Sucesso.pdf-3-e1751787796622.png.webp" 
+                alt="Ebook Brigadeiro Sem Fogo"
+                className="w-80 md:w-[500px] relative z-10 animate-float drop-shadow-[0_35px_35px_rgba(0,0,0,0.6)]"
                 referrerPolicy="no-referrer"
               />
-            </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.6, type: "spring" }}
+              className="flex flex-col items-center lg:items-start"
+            >
+              <div className="flex flex-col gap-8 items-center lg:items-start">
+                <button 
+                  onClick={() => handleRedirect("#pricing")}
+                  className="group relative flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-600 text-black font-display font-black text-4xl px-12 py-10 rounded-3xl shadow-[0_20px_50px_rgba(234,179,8,0.5)] hover:scale-105 transition-all active:scale-95 cursor-pointer overflow-hidden"
+                >
+                  <span className="relative z-10">QUERO MEU ACESSO!</span>
+                  <div className="absolute inset-0 bg-white/30 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                </button>
+
+                <div className="flex items-center justify-center lg:justify-start gap-6">
+                  <div className="flex -space-x-3">
+                    {[1,2,3,4].map(i => (
+                      <img key={i} src={`https://picsum.photos/seed/user${i}/40/40`} className="w-10 h-10 rounded-full border-2 border-black" referrerPolicy="no-referrer" />
+                    ))}
+                  </div>
+                  <p className="text-[10px] md:text-xs text-gray-300 font-black uppercase tracking-widest leading-tight">
+                    <span className="text-green-500">+1.450 ALUNAS</span> <br /> SATISFEITAS ESTA SEMANA
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-white to-transparent" />
       </section>
 
       {/* Advantages Section */}
-      <section className="py-20 px-4 bg-white text-black">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-center mb-12 leading-tight">
-            Veja as vantagens de fazer o <br /> brigadeiro sem fogo
-          </h2>
+      <section className="py-16 px-4 bg-white text-black relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-end justify-between mb-10 gap-8">
+            <div className="max-w-2xl">
+              <h2 className="text-6xl md:text-9xl font-display uppercase italic leading-[0.85] mb-6">
+                POR QUE O <br /> <span className="text-red-600">SEM FOGO</span> <br /> É O MELHOR?
+              </h2>
+              <p className="text-xl font-heading font-medium text-gray-600">Esqueça tudo o que você sabe sobre brigadeiro tradicional. O futuro é frio, rápido e lucrativo.</p>
+            </div>
+            <div className="bg-black text-white p-8 rounded-3xl brutal-border">
+              <p className="font-display text-4xl italic uppercase leading-none">ECONOMIA <br /> DE 100% <br /> NO GÁS</p>
+            </div>
+          </div>
           
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-4 gap-6">
             {[
-              "Baixo Investimento",
-              "Preparo Rápido",
-              "Economia de Tempo",
-              "Não precisa ficar esperando esfriar para modelar",
-              "Baixo risco de a receita dar errado",
-              "Não tem perda de material (não gruda nem queima)",
-              "Não gasta gás",
-              "Fica tão delicioso quanto o tradicional"
+              { title: "ZERO GÁS", desc: "Economize dinheiro real em cada receita.", icon: Zap, color: "bg-yellow-400" },
+              { title: "ZERO RISCO", desc: "Nunca mais perca o ponto ou queime o doce.", icon: ShieldCheck, color: "bg-red-500" },
+              { title: "ULTRA RÁPIDO", desc: "Pronto para modelar em minutos.", icon: Clock, color: "bg-blue-500" },
+              { title: "LUCRO MÁXIMO", desc: "Baixo custo de produção, alta margem.", icon: ShoppingBag, color: "bg-green-500" },
+              { title: "SEM ESPERA", desc: "Não precisa esperar esfriar por horas.", icon: PlayCircle, color: "bg-purple-500" },
+              { title: "PERFEIÇÃO", desc: "Textura aveludada e brilho intenso.", icon: Star, color: "bg-orange-500" },
+              { title: "SIMPLICIDADE", desc: "Qualquer pessoa consegue fazer.", icon: CheckCircle2, color: "bg-cyan-500" },
+              { title: "SABOR REAL", desc: "O mesmo sabor do brigadeiro gourmet.", icon: MessageCircle, color: "bg-pink-500" }
             ].map((item, i) => (
-              <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <CheckCircle2 className="text-red-500 shrink-0 w-6 h-6" />
-                <span className="font-medium text-gray-800">{item}</span>
-              </div>
+              <motion.div 
+                key={i} 
+                whileHover={{ y: -10, rotate: i % 2 === 0 ? 1 : -1 }}
+                className="p-8 rounded-3xl bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all group"
+              >
+                <div className={`${item.color} w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
+                  <item.icon className="w-8 h-8 text-black" />
+                </div>
+                <h3 className="font-display text-2xl mb-3 uppercase italic leading-none">{item.title}</h3>
+                <p className="text-base text-gray-700 font-heading font-medium">{item.desc}</p>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Recipe List Section */}
-      <section className="py-20 px-4 bg-[#1A051B]">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-display font-bold text-center mb-12 leading-tight">
-            Veja um pouco das receitas <br /> que você vai aprender
-          </h2>
+      <section className="py-16 px-4 bg-[#0A050D] border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl md:text-7xl font-display uppercase italic leading-none mb-4">
+              O QUE VOCÊ VAI <span className="text-yellow-500">DOMINAR?</span>
+            </h2>
+            <p className="text-gray-400 font-heading text-lg">Receitas testadas e aprovadas por especialistas.</p>
+          </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-12">
-            <div className="w-full md:w-1/2">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="w-full lg:w-1/2 relative group">
+              <div className="absolute inset-0 bg-yellow-500/10 blur-[100px] rounded-full group-hover:bg-yellow-500/20 transition-all" />
               <img 
                 src="https://cmrdigital.com.br/wp-content/uploads/2024/08/Design-sem-nome-2-e1751787150126.png.webp" 
                 alt="Receitas"
-                className="rounded-2xl shadow-2xl"
+                className="rounded-[40px] shadow-2xl relative z-10 border-4 border-white/5 group-hover:scale-[1.02] transition-transform duration-500"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className="w-full md:w-1/2 grid gap-4">
+            <div className="w-full lg:w-1/2 grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
                 "Brigadeiro Creme de Avelã",
                 "Brigadeiro de Pistache",
@@ -293,202 +375,319 @@ export default function App() {
                 "Brigadeiro de Capuccino",
                 "Frutas Vermelhas"
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Star className="text-green-400 w-5 h-5 fill-green-400" />
-                  <span className="font-medium italic text-gray-200">{item}</span>
-                </div>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="flex items-center gap-4 glass-card p-4 rounded-2xl border-white/5 hover:border-yellow-500/30 transition-all"
+                >
+                  <div className="bg-yellow-500/20 p-2 rounded-full">
+                    <Star className="text-yellow-500 w-4 h-4 fill-yellow-500" />
+                  </div>
+                  <span className="font-heading font-bold text-gray-200">{item}</span>
+                </motion.div>
               ))}
-              <p className="font-bold text-yellow-500 mt-2">E muito mais...</p>
+              <div className="md:col-span-2 mt-4">
+                <p className="font-display text-2xl text-yellow-500 italic uppercase">E MUITO MAIS...</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Bonus Section */}
-      <section className="py-20 px-4 bg-[#1A051B] border-t border-white/5">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-gray-400 mb-4">Escolhendo o pacote <span className="font-bold text-white">Premium</span> você leva todos esses bônus:</p>
-          <h2 className="text-4xl md:text-6xl font-display font-black mb-16">
-            +5 BÔNUS <span className="text-yellow-500">ESPECIAIS!</span>
+      <section className="py-16 px-4 bg-white text-black relative overflow-hidden border-t-8 border-black">
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            className="inline-block bg-black text-white px-8 py-3 rounded-full font-black text-base mb-8 uppercase tracking-[0.3em] shadow-[10px_10px_0px_0px_rgba(220,38,38,1)]"
+          >
+            BÔNUS EXCLUSIVOS: SÓ HOJE!
+          </motion.div>
+          <h2 className="text-6xl md:text-[10rem] font-display uppercase italic mb-12 leading-[0.8] tracking-tighter">
+            VOCÊ LEVA <br /> <span className="text-red-600">TUDO ISSO</span> <br /> <span className="underline decoration-black decoration-8 underline-offset-8">GRÁTIS!</span>
           </h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
             {[
-              { title: "Curso em vídeo", desc: "+ de 30 aulas passo a passo", img: "https://cmrdigital.com.br/wp-content/uploads/2024/09/mockup-e1751787233682.png.webp" },
-              { title: "70 Receitas", desc: "Brigadeiros gourmet tradicional", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/brigadeiro-gourmett-e1751787269772.png.webp" },
-              { title: "60 Receitas", desc: "Geladinhos que mais vendem", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/96-Receitas-de-Salgados-de-Sucesso.pdf-2-e1751787298806.png.webp" },
-              { title: "50 Receitas", desc: "Melhores doces fit", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/3223-e1751787315579.png.webp" },
-              { title: "40 Receitas", desc: "Bolos caseiros especiais", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/42-e1751787334729.png.webp" }
+              { title: "CURSO EM VÍDEO", desc: "+30 AULAS PASSO A PASSO", img: "https://cmrdigital.com.br/wp-content/uploads/2024/09/mockup-e1751787233682.png.webp", value: "R$ 97,00" },
+              { title: "70 RECEITAS", desc: "BRIGADEIRO TRADICIONAL", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/brigadeiro-gourmett-e1751787269772.png.webp", value: "R$ 47,00" },
+              { title: "60 RECEITAS", desc: "GELADINHOS DE SUCESSO", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/96-Receitas-de-Salgados-de-Sucesso.pdf-2-e1751787298806.png.webp", value: "R$ 37,00" },
+              { title: "50 RECEITAS", desc: "DOCES FIT & SAUDÁVEIS", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/3223-e1751787315579.png.webp", value: "R$ 27,00" },
+              { title: "40 RECEITAS", desc: "BOLOS CASEIROS ESPECIAIS", img: "https://cmrdigital.com.br/wp-content/uploads/2024/08/42-e1751787334729.png.webp", value: "R$ 27,00" }
             ].map((bonus, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 flex flex-col items-center">
-                <img src={bonus.img} alt={bonus.title} className="w-full mb-4" referrerPolicy="no-referrer" />
-                <h3 className="text-black font-bold text-sm leading-tight mb-1">{bonus.title}</h3>
-                <p className="text-gray-600 text-[10px] uppercase font-bold">{bonus.desc}</p>
-                <div className="mt-auto pt-3 w-full">
-                  <div className="bg-green-100 text-green-600 text-[10px] font-black py-1 rounded-md">GRÁTIS</div>
+              <motion.div 
+                key={i} 
+                whileHover={{ y: -15, rotate: i % 2 === 0 ? -2 : 2 }}
+                className="bg-white rounded-3xl p-8 flex flex-col items-center border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
+              >
+                <div className="relative mb-8">
+                  <img src={bonus.img} alt={bonus.title} className="w-full relative z-10 drop-shadow-xl" referrerPolicy="no-referrer" />
+                  <div className="absolute -top-4 -right-4 bg-red-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl border-2 border-white rotate-12">100% GRÁTIS</div>
                 </div>
-              </div>
+                <h3 className="font-display text-2xl mb-2 uppercase italic leading-none">{bonus.title}</h3>
+                <p className="text-gray-500 text-xs font-black uppercase tracking-widest mb-6">{bonus.desc}</p>
+                <div className="mt-auto w-full border-t-2 border-black pt-6">
+                  <p className="text-gray-400 text-xs line-through mb-2 font-bold italic">VALOR REAL: {bonus.value}</p>
+                  <div className="bg-green-500 text-black text-sm font-black py-3 rounded-2xl uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">LIBERADO</div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-5xl font-display font-black text-black mb-12">
-            Depoimentos de <span className="text-orange-500">nossas clientes!</span>
+      <section className="py-16 px-4 bg-[#0A050D]">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-4xl md:text-7xl font-display uppercase italic text-white mb-10 leading-none">
+            QUEM JÁ <span className="text-yellow-500">MUDOU DE VIDA</span>
           </h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               "https://cmrdigital.com.br/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-19-at-15.14.33-768x1559.jpeg.webp",
               "https://cmrdigital.com.br/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-19-at-15.14.33-1-768x1563.jpeg.webp",
               "https://cmrdigital.com.br/wp-content/uploads/2024/08/WhatsApp-Image-2024-08-19-at-15.14.33-2-768x1548.jpeg.webp"
             ].map((img, i) => (
-              <img key={i} src={img} alt="Depoimento" className="rounded-xl shadow-lg" referrerPolicy="no-referrer" />
+              <motion.div 
+                key={i} 
+                whileHover={{ scale: 1.05 }}
+                className="relative group cursor-zoom-in"
+              >
+                <div className="absolute inset-0 bg-yellow-500/10 blur-2xl rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <img src={img} alt="Depoimento" className="rounded-3xl shadow-2xl relative z-10 border-2 border-white/5" referrerPolicy="no-referrer" />
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Guarantee Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-yellow-700 to-yellow-900">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-10 text-center md:text-left">
-          <img 
-            src="https://cmrdigital.com.br/wp-content/uploads/2024/06/SELO-7-DIAS-ALPHA.png.webp" 
-            alt="Garantia 7 Dias" 
-            className="w-48 md:w-64 animate-pulse-subtle"
-            referrerPolicy="no-referrer"
-          />
-          <div>
-            <h2 className="text-3xl font-display font-black mb-4">GARANTIA INCONDICIONAL</h2>
-            <p className="text-lg text-yellow-100">
-              Nós confiamos tanto em nossos estudos e pesquisas que lhe garantimos 7 dias de garantia incondicional! Se não gostar, devolvemos seu dinheiro.
+      <section className="py-16 px-4 bg-gradient-to-b from-[#0A050D] to-red-900/40">
+        <div className="max-w-5xl mx-auto glass-card rounded-[40px] p-10 md:p-16 flex flex-col md:flex-row items-center gap-12 border-red-600/30">
+          <div className="relative">
+            <div className="absolute inset-0 bg-red-600/20 blur-[60px] rounded-full animate-pulse" />
+            <img 
+              src="https://cmrdigital.com.br/wp-content/uploads/2024/06/SELO-7-DIAS-ALPHA.png.webp" 
+              alt="Garantia 7 Dias" 
+              className="w-48 md:w-72 relative z-10 animate-float"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="text-center md:text-left">
+            <h2 className="text-4xl md:text-6xl font-display uppercase italic mb-6 leading-none">
+              RISCO <span className="text-red-600">ZERO</span> <br /> PARA VOCÊ!
+            </h2>
+            <p className="text-xl font-heading font-light text-gray-300 leading-relaxed mb-8">
+              Nós confiamos tanto no nosso método que se você não gostar do conteúdo, devolvemos <span className="text-white font-bold">100% do seu dinheiro</span> em até 7 dias. Sem perguntas, sem burocracia.
             </p>
+            <div className="flex items-center justify-center md:justify-start gap-4">
+              <ShieldCheck className="w-8 h-8 text-green-500" />
+              <span className="font-black uppercase tracking-widest text-xs">Sua satisfação é nossa prioridade</span>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 bg-black">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-display font-black text-center mb-16">
-            Escolha a melhor opção <span className="text-yellow-500">para você!</span>
-          </h2>
+      <section id="pricing" className="py-16 px-4 bg-[#0A050D] relative overflow-hidden border-t-8 border-yellow-500">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-yellow-500/10 blur-[200px] rounded-full pointer-events-none" />
+        
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="text-center mb-12">
+            <h2 className="text-6xl md:text-[12rem] font-display uppercase italic text-white mb-6 leading-[0.8] tracking-tighter">
+              ESCOLHA SEU <br /> <span className="text-yellow-500 text-glow-yellow">DESTINO</span>
+            </h2>
+            <p className="text-2xl font-heading font-medium text-gray-400">A sua nova vida começa com um clique.</p>
+          </div>
           
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
             {/* Basic Plan */}
-            <div className="bg-white rounded-[32px] p-8 flex flex-col text-black">
-              <div className="text-center mb-8">
-                <span className="bg-gray-100 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">BÁSICO</span>
-                <h3 className="text-2xl font-black mt-4">E-book Brigadeiro</h3>
+            <motion.div 
+              whileHover={{ y: -15 }}
+              className="glass-card rounded-[60px] p-12 flex flex-col border-white/10 hover:border-white/30 transition-all relative group"
+            >
+              <div className="mb-10">
+                <span className="text-gray-500 font-black tracking-[0.3em] text-sm uppercase">OPÇÃO ESSENCIAL</span>
+                <h3 className="text-5xl font-display uppercase italic mt-4 leading-none">E-BOOK <br /> COMPLETO</h3>
               </div>
-              <ul className="space-y-4 mb-10 flex-grow">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="text-green-500 shrink-0" />
-                  <span className="text-sm font-medium">E-book: 50 receitas de brigadeiro sem fogo</span>
+              <ul className="space-y-6 mb-16 flex-grow">
+                <li className="flex items-center gap-4 text-gray-300">
+                  <CheckCircle2 className="text-yellow-500 w-6 h-6" />
+                  <span className="font-heading text-lg font-medium">50 Receitas de Brigadeiro Sem Fogo</span>
+                </li>
+                <li className="flex items-center gap-4 text-gray-300">
+                  <CheckCircle2 className="text-yellow-500 w-6 h-6" />
+                  <span className="font-heading text-lg font-medium">Passo a Passo Detalhado</span>
+                </li>
+                <li className="flex items-center gap-4 text-gray-500/50 opacity-50">
+                  <Lock className="w-6 h-6" />
+                  <span className="font-heading text-lg font-medium line-through">Todos os Bônus Exclusivos</span>
+                </li>
+                <li className="flex items-center gap-4 text-gray-500/50 opacity-50">
+                  <Lock className="w-6 h-6" />
+                  <span className="font-heading text-lg font-medium line-through">Acesso Vitalício</span>
                 </li>
               </ul>
-              <div className="text-center space-y-4">
-                <p className="text-4xl font-black text-yellow-700">R$ 2,99</p>
+              <div className="space-y-8">
+                <div className="flex flex-col">
+                  <span className="text-gray-500 line-through text-xl font-black italic">R$ 10,00</span>
+                  <span className="text-6xl md:text-8xl font-display text-white leading-none">R$ 2,99</span>
+                </div>
                 <button 
                   onClick={() => handleRedirect("https://docesgourmet.shop/oferta/")}
-                  className="block w-full bg-green-600 text-white font-bold py-4 rounded-2xl hover:bg-green-700 transition-colors cursor-pointer"
+                  className="w-full bg-white text-black font-display font-black py-8 rounded-3xl hover:bg-yellow-500 transition-all cursor-pointer text-3xl uppercase italic shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
                 >
-                  PLANO BÁSICO
+                  COMPRAR AGORA
                 </button>
-                <p className="text-[10px] text-gray-500">Mas antes de comprar, temos uma oferta ainda melhor abaixo</p>
-                <ArrowDown className="mx-auto text-black animate-bounce" />
               </div>
-            </div>
+            </motion.div>
 
             {/* Premium Plan */}
-            <div className="bg-premium-card rounded-[32px] p-8 flex flex-col border-2 border-yellow-500 shadow-[0_0_40px_rgba(255,163,17,0.2)]">
-              <div className="text-center mb-8">
-                <span className="bg-yellow-500 text-black px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">PREMIUM</span>
-                <h3 className="text-2xl font-black mt-4">Combo Completo</h3>
+            <motion.div 
+              whileHover={{ y: -15 }}
+              className="bg-premium-card rounded-[60px] p-12 flex flex-col border-4 border-yellow-500 shadow-[0_30px_100px_rgba(234,179,8,0.3)] relative overflow-hidden"
+            >
+              <div className="absolute top-10 right-10 bg-red-600 text-white px-6 py-2 rounded-full text-sm font-black uppercase tracking-widest animate-pulse shadow-2xl border-2 border-white">
+                MAIS VENDIDO
               </div>
-              <div className="bg-green-500/20 text-green-400 text-center py-2 rounded-lg text-xs font-bold mb-6">
-                RESTAM APENAS 10 VAGAS PROMOCIONAIS
+              
+              <div className="mb-10">
+                <span className="text-yellow-500 font-black tracking-[0.3em] text-sm uppercase">OPÇÃO PROFISSIONAL</span>
+                <h3 className="text-5xl font-display uppercase italic mt-4 leading-none">COMBO <br /> IMPERADOR</h3>
               </div>
-              <ul className="space-y-3 mb-10 flex-grow text-sm">
+
+              <div className="bg-yellow-500 text-black text-center py-3 rounded-2xl text-sm font-black mb-10 uppercase tracking-[0.2em] shadow-lg">
+                OFERTA POR TEMPO LIMITADO
+              </div>
+
+              <ul className="space-y-4 mb-16 flex-grow">
                 {[
-                  "E-book completo: 50 receitas",
-                  "+5 Bônus Especiais",
-                  "Curso completo de geladinhos",
-                  "70 Receitas brigadeiro tradicional",
-                  "60 Receitas geladinho gourmet",
-                  "50 Receitas doces fit",
-                  "40 Receitas bolos caseiros",
-                  "Atualizações gratuitas",
-                  "Acesso vitalício",
-                  "Acesso imediato!"
+                  "E-book: 50 Receitas Sem Fogo",
+                  "BÔNUS: Curso em Vídeo (+30 Aulas)",
+                  "BÔNUS: 70 Receitas Tradicionais",
+                  "BÔNUS: 60 Receitas Geladinho Gourmet",
+                  "BÔNUS: 50 Receitas Doces Fit",
+                  "BÔNUS: 40 Receitas Bolos Caseiros",
+                  "Suporte VIP via WhatsApp",
+                  "Certificado de Conclusão"
                 ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <CheckCircle2 className="text-yellow-500 shrink-0 w-4 h-4" />
-                    <span>{item}</span>
+                  <li key={i} className="flex items-center gap-4 text-white">
+                    <Star className="text-yellow-500 w-5 h-5 fill-yellow-500" />
+                    <span className="font-heading text-base font-bold">{item}</span>
                   </li>
                 ))}
               </ul>
-              <div className="text-center space-y-2">
-                <p className="text-xs text-gray-400">Valor Total de <del className="text-red-500">R$ 49,99</del> por</p>
-                <p className="text-5xl font-black text-green-400">R$ 14,99</p>
-                <p className="text-sm font-bold">Pagamento Único</p>
+
+              <div className="space-y-8">
+                <div className="flex flex-col">
+                  <span className="text-gray-400 text-xl line-through font-black italic">VALOR TOTAL: R$ 197,00</span>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-7xl md:text-[9rem] font-display text-yellow-500 text-glow-yellow leading-none tracking-tighter">R$ 14,99</span>
+                  </div>
+                </div>
                 <button 
                   onClick={() => handleRedirect("https://pay.lowify.com.br/checkout?product_id=BPKfvc")}
-                  className="block w-full bg-yellow-500 text-black font-black py-5 rounded-2xl hover:bg-yellow-400 transition-colors mt-4 shadow-xl cursor-pointer"
+                  className="w-full bg-yellow-500 text-black font-display font-black py-8 rounded-3xl hover:bg-white transition-all cursor-pointer text-4xl uppercase italic shadow-[0_20px_60px_rgba(234,179,8,0.4)]"
                 >
-                  GARANTIR MINHA VAGA!
+                  QUERO O COMBO COMPLETO!
                 </button>
-                <p className="text-[10px] text-gray-400 mt-4 italic">*Pagamento único, acesso vitalício*</p>
+                <p className="text-xs text-center text-gray-400 font-black uppercase tracking-[0.3em]">PAGAMENTO ÚNICO · ACESSO VITALÍCIO</p>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-4 bg-[#100D0D]">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-display font-black text-center text-yellow-500 mb-12">
-            DÚVIDAS FREQUENTES
-          </h2>
-          
-          <FAQItem 
-            question="Como irei receber meu acesso?" 
-            answer="Assim que você realizar o pagamento, você receberá no seu e-mail o link de acesso. Para baixar o material em seu celular, computador ou tablet." 
-          />
-          <FAQItem 
-            question="Por quanto tempo terei acesso?" 
-            answer="Seu acesso é vitalício! Você paga uma única vez e pode acessar o conteúdo para sempre, inclusive as futuras atualizações." 
-          />
-          <FAQItem 
-            question="O pagamento é seguro?" 
-            answer="Sim, é 100% seguro. A Kiwify é uma das maiores empresas de pagamentos e hospedagens de produtos online do Brasil, com criptografia de ponta." 
-          />
-          <FAQItem 
-            question="Quero comprar sem informar o CPF" 
-            answer="Pela plataforma oficial é obrigatório por lei. Caso queira alternativas, entre em contato com nosso suporte via WhatsApp." 
-          />
-          <FAQItem 
-            question="Comprei e não recebi" 
-            answer="Verifique sua caixa de entrada, spam ou lixeira. O e-mail vem em nome da Kiwify. Se não encontrar, chame nosso suporte imediatamente." 
-          />
+      <section className="py-16 px-4 bg-black relative">
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="text-center mb-10">
+            <h2 className="text-6xl md:text-8xl font-display uppercase italic text-white mb-6">
+              DÚVIDAS <span className="text-yellow-500">FREQUENTES</span>
+            </h2>
+            <p className="text-xl font-heading text-gray-500 uppercase tracking-widest">Tudo o que você precisa saber antes de dominar o mercado.</p>
+          </div>
 
-          <div className="text-center mt-16">
-            <button 
-              onClick={() => handleRedirect("https://pay.lowify.com.br/checkout?product_id=BPKfvc")}
-              className="inline-flex items-center gap-3 bg-yellow-500 text-black font-display font-black text-lg px-8 py-4 rounded-full hover:scale-105 transition-transform cursor-pointer"
+          <div className="space-y-6">
+            {[
+              {
+                q: "COMO RECEBO O ACESSO?",
+                a: "Imediatamente após a confirmação do pagamento. Você receberá um e-mail com todos os dados de acesso à nossa plataforma exclusiva."
+              },
+              {
+                q: "PRECISO DE EQUIPAMENTOS CAROS?",
+                a: "Absolutamente NÃO. Você só precisa de utensílios básicos que já tem na sua cozinha. O foco é praticidade e baixo custo inicial."
+              },
+              {
+                q: "NUNCA COZINHEI, CONSIGO FAZER?",
+                a: "Sim! Nossas receitas foram desenhadas para serem à prova de erros. O passo a passo é tão detalhado que qualquer pessoa consegue resultados profissionais."
+              },
+              {
+                q: "O ACESSO É VITALÍCIO?",
+                a: "Sim. Uma vez seu, sempre seu. Você pode acessar quando quiser, de onde quiser, para sempre."
+              },
+              {
+                q: "PRECISO INFORMAR MEU CPF?",
+                a: "Não! Valorizamos sua privacidade e agilidade. Você pode realizar sua compra de forma rápida e segura sem a necessidade de informar seu CPF."
+              }
+            ].map((item, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="brutal-border-white p-8 hover:bg-yellow-500 hover:text-black transition-all group cursor-pointer"
+              >
+                <h3 className="text-2xl font-display uppercase italic mb-4 group-hover:text-black">{item.q}</h3>
+                <p className="font-heading text-gray-400 group-hover:text-black/80 leading-relaxed">{item.a}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
             >
-              CLIQUE AQUI E GARANTA SUA VAGA!
-            </button>
+              <button 
+                onClick={() => handleRedirect("#pricing")}
+                className="bg-yellow-500 text-black font-display font-black px-12 py-8 rounded-full text-4xl uppercase italic hover:bg-white hover:scale-110 transition-all shadow-[0_0_50px_rgba(234,179,8,0.3)] cursor-pointer"
+              >
+                QUERO MEU ACESSO!
+              </button>
+            </motion.div>
+            <p className="mt-8 text-gray-500 font-black uppercase tracking-[0.4em] text-sm">ÚLTIMAS VAGAS COM DESCONTO DISPONÍVEIS</p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-10 px-4 bg-black border-t border-white/5 text-center">
+        {/* Floating CTA */}
+        <AnimatePresence>
+          {showFloatingCTA && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md"
+            >
+              <button
+                onClick={() => handleRedirect("#pricing")}
+                className="w-full bg-yellow-500 text-black font-display font-black py-5 rounded-2xl shadow-[0_10px_40px_rgba(234,179,8,0.6)] flex items-center justify-center gap-3 text-xl uppercase italic group border-2 border-black"
+              >
+                QUERO MEU ACESSO AGORA!
+                <ArrowRightCircle className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
             <img 
